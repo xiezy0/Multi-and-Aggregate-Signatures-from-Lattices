@@ -260,33 +260,51 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_multi_signature_square_matrix
     string pt1 = "This is a test";
     plaintext.SetPlaintext(pt1);
 
+    double duration = 0.0;
+    TimeVar t1, t_all;
+    TIC(t1);
+    TIC(t_all);
+
     // Create setup key
     GPVVerificationKey<Poly> A;
     GPVSignKey<Poly> T;
     context.KeyGen(&T, &A);
 
+    duration = TOC(t1);
+    std::cout << "Setup Time: " << duration << " ms" << std::endl;
+
+    TIC(t1);
     // User 1 : Create public key and private key
     GPVVerificationKey<Poly> A_1;
     GPVSignKey<Poly> T_1;
     context.KeyGen(&T_1, &A_1);
+    duration = TOC(t1);
+    std::cout << "Generate Key Time: " << duration << " ms" << std::endl;
     // User 2 : Create public key and private key
     GPVVerificationKey<Poly> A_2;
     GPVSignKey<Poly> T_2;
     context.KeyGen(&T_2, &A_2);
 
+    TIC(t1);
     // User 1 : presign
     GPVSignature<Poly> R_1;
     context.CrsGen(A_1, T, A, &R_1);
+    duration = TOC(t1);
+    std::cout << "Crs Gen Time: " << duration << " ms" << std::endl;
     // User 2 : presign
     GPVSignature<Poly> R_2;
     context.CrsGen(A_2, T, A, &R_2);
     //std::cout << Ri.GetSignature().GetRows() << std::endl;
 
+    TIC(t1);
     // User 1 : sign
     GPVSignature<Poly> Sigma_1_Hat, Sigma_1;
     context.Sign(plaintext, T_1, A_1, &Sigma_1_Hat);
     Matrix<Poly> Sigma_1_Matrix = R_1.GetSignature().Mult(Sigma_1_Hat.GetSignature());
     Sigma_1.SetSignature(std::make_shared<Matrix<Poly>>(Sigma_1_Matrix));
+    duration = TOC(t1);
+    std::cout << "Sign Time: " << duration << " ms" << std::endl;
+
     // User 2 : sign
     GPVSignature<Poly> Sigma_2_Hat, Sigma_2;
     context.Sign(plaintext, T_2, A_2, &Sigma_2_Hat);
@@ -301,6 +319,7 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_multi_signature_square_matrix
     //size_t k = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetK();
 
     // aggregation
+    TIC(t1);
     Matrix<Poly> omega_all(zero_alloc, 5, 5, uniform_alloc);
     //
     Matrix<Poly> s1 = Sigma_1_Matrix.ScalarMult(omega_all(1,1));
@@ -308,11 +327,20 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_multi_signature_square_matrix
     Matrix<Poly> Sigma_Alpha_Matrix = s1.Add(s2);
     GPVSignature<Poly> Sigma_Alpha;
     Sigma_Alpha.SetSignature(std::make_shared<Matrix<Poly>>(Sigma_Alpha_Matrix));
+    duration = TOC(t1);
+    std::cout << "Aggregation Time: " << duration << " ms" << std::endl;
 
+    TIC(t1);
     // verify
     bool result = context.VerifyMulti(plaintext, Sigma_Alpha, A, omega_all);
+    duration = TOC(t1);
+    std::cout << "Verify Time: " << duration << " ms" << std::endl;
+
     bool result1 = context.Verify(plaintext, Sigma_1, A);
     bool result2 = context.Verify(plaintext, Sigma_2, A);
+
+    duration = TOC(t_all);
+    std::cout << "All Time: " << duration << " ms" << std::endl;
     std::cout << "User1 signature test: " << result1 << std::endl;
     std::cout << "User1 signature test: " << result2 << std::endl;
     std::cout << "multi-signature test: " << result << std::endl;
