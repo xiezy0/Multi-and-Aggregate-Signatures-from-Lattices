@@ -73,7 +73,7 @@ class SignatureContext {
 
     // Method for generate CRS
   void CrsGen(const LPVerificationKey<Element>& vki, const LPSignKey<Element>& sk,
-              const LPVerificationKey<Element>& vk, LPSignature<Element>* sign);
+              const LPVerificationKey<Element>& vk, const LPSignPlaintext<Element>& seed, LPSignature<Element>* sign);
   /**
    *@brief Method for offline phase of signing a given plaintext
    *@param pt Plaintext to be signed
@@ -105,12 +105,14 @@ class SignatureContext {
    */
   bool Verify(const LPSignPlaintext<Element>& pt,
               const LPSignature<Element>& signature,
-              const LPVerificationKey<Element>& vk);
+              const LPVerificationKey<Element>& vk,
+              const LPSignPlaintext<Element>& seed);
 
   bool VerifyMulti(const LPSignPlaintext<Element>& pt,
                    const LPSignature<Element>& signature,
                    const LPVerificationKey<Element>& vk,
-                   const Matrix<Element>& weight);
+                   const Matrix<Element>& weight,
+                   const LPSignPlaintext<Element> seeds[]);
 
   shared_ptr<LPSignatureParameters<Element>> m_params;
 

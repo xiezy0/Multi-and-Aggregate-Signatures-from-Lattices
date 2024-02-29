@@ -104,8 +104,9 @@ template <class Element>
 void SignatureContext<Element>::CrsGen(const LPVerificationKey<Element>& vki,
                                        const LPSignKey<Element>& sk,
                                        const LPVerificationKey<Element>& vk,
+                                       const LPSignPlaintext<Element>& seed,
                                        LPSignature<Element>* sign) {
-    m_scheme->CrsGen(m_params, sk, vk, vki, sign);
+    m_scheme->CrsGen(m_params, sk, vk, vki, seed, sign);
 }
 
 // Method for offline phase of signing a given plaintext
@@ -126,8 +127,9 @@ void SignatureContext<Element>::SignOnlinePhase(
 template <class Element>
 bool SignatureContext<Element>::Verify(const LPSignPlaintext<Element>& pt,
                                        const LPSignature<Element>& signature,
-                                       const LPVerificationKey<Element>& vk) {
-  return m_scheme->Verify(m_params, vk, signature, pt);
+                                       const LPVerificationKey<Element>& vk,
+                                       const LPSignPlaintext<Element>& seed) {
+  return m_scheme->Verify(m_params, vk, signature, pt, seed);
 }
 
 // Method for verifying the plaintext and signature
@@ -135,7 +137,8 @@ template <class Element>
 bool SignatureContext<Element>::VerifyMulti(const LPSignPlaintext<Element>& pt,
                                             const LPSignature<Element>& signature,
                                             const LPVerificationKey<Element>& vk,
-                                            const Matrix<Element>& weight) {
-    return m_scheme->VerifyMulti(m_params, vk, signature, pt, weight);
+                                            const Matrix<Element>& weight,
+                                            const LPSignPlaintext<Element> seeds[]) {
+    return m_scheme->VerifyMulti(m_params, vk, signature, pt, weight, seeds);
 }
 }  // namespace lbcrypto

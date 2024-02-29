@@ -381,7 +381,8 @@ class GPVSignatureScheme : public LPSignatureScheme<Element> {
 
   void CrsGen(shared_ptr<LPSignatureParameters<Element>> m_params,
               const LPSignKey<Element>& sk, const LPVerificationKey<Element>& vk,
-              const LPVerificationKey<Element>& vki, LPSignature<Element>* sign);
+              const LPVerificationKey<Element>& vki, const LPSignPlaintext<Element>& usrseed,
+              LPSignature<Element>* sign);
   /**
    *Method for offline perturbation sampling
    *@param m_params parameters used for signing
@@ -420,14 +421,16 @@ class GPVSignatureScheme : public LPSignatureScheme<Element> {
   bool Verify(shared_ptr<LPSignatureParameters<Element>> m_params,
               const LPVerificationKey<Element>& vk,
               const LPSignature<Element>& sign,
-              const LPSignPlaintext<Element>& pt);
+              const LPSignPlaintext<Element>& pt,
+              const LPSignPlaintext<Element>& seed);
 
 
   bool VerifyMulti(shared_ptr<LPSignatureParameters<Element>> m_params,
               const LPVerificationKey<Element>& vk,
               const LPSignature<Element>& sign,
               const LPSignPlaintext<Element>& pt,
-              const Matrix<Element> &weight);
+              const Matrix<Element> &weight,
+              const LPSignPlaintext<Element> seeds[]);
 
   /**
    *

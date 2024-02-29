@@ -179,6 +179,7 @@ class LPSignatureScheme {
                       const LPSignKey<Element> &sk,
                       const LPVerificationKey<Element> &vk,
                       const LPVerificationKey<Element> &vki,
+                      const LPSignPlaintext<Element>& seed,
                       LPSignature<Element> *sign);
   /**
    *Method for offline perturbation sampling
@@ -217,13 +218,15 @@ class LPSignatureScheme {
   virtual bool Verify(shared_ptr<LPSignatureParameters<Element>> m_params,
                       const LPVerificationKey<Element> &vk,
                       const LPSignature<Element> &sign,
-                      const LPSignPlaintext<Element> &pt);
+                      const LPSignPlaintext<Element> &pt,
+                      const LPSignPlaintext<Element> &seed);
 
     virtual bool VerifyMulti(shared_ptr<LPSignatureParameters<Element>> m_params,
                         const LPVerificationKey<Element> &vk,
                         const LPSignature<Element> &sign,
                         const LPSignPlaintext<Element> &pt,
-                        const Matrix<Element> &weight);
+                        const Matrix<Element> &weight,
+                        const LPSignPlaintext<Element> seeds[]);
   /*
    * @brief Dummy method to force abstract base class
    */
