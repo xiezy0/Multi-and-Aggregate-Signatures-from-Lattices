@@ -68,9 +68,6 @@ class SignatureContext {
   void Sign(const LPSignPlaintext<Element>& pt, const LPSignKey<Element>& sk,
             const LPVerificationKey<Element>& vk, LPSignature<Element>* sign);
 
-  void SignMat(const LPSignPlaintext<Element>& pt, const LPSignKey<Element>& sk,
-               const LPVerificationKey<Element>& vk, LPSignature<Element>* sign);
-
     // Method for generate CRS
   void CrsGen(const LPVerificationKey<Element>& vki, const LPSignKey<Element>& sk,
               const LPVerificationKey<Element>& vk, const LPSignPlaintext<Element>& seed, LPSignature<Element>* sign);

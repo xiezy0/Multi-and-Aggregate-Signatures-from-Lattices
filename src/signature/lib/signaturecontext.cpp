@@ -90,15 +90,6 @@ void SignatureContext<Element>::Sign(const LPSignPlaintext<Element>& pt,
   m_scheme->Sign(m_params, sk, vk, pt, sign);
 }
 
-// Method for signing a given plaintext
-template <class Element>
-void SignatureContext<Element>::SignMat(const LPSignPlaintext<Element>& pt,
-                                     const LPSignKey<Element>& sk,
-                                     const LPVerificationKey<Element>& vk,
-                                     LPSignature<Element>* sign) {
-    m_scheme->Sign(m_params, sk, vk, pt, sign);
-}
-
 // Method for generate CRS
 template <class Element>
 void SignatureContext<Element>::CrsGen(const LPVerificationKey<Element>& vki,

@@ -107,8 +107,8 @@ void GPVSignatureScheme<Element>::Sign(
       std::static_pointer_cast<GPVSignatureParameters<Element>>(sparams);
   const auto &signKey = static_cast<const GPVSignKey<Element> &>(sk);
   const auto &verificationKey = static_cast<const GPVVerificationKey<Element> &>(vk);
-  const auto &plainText = static_cast<const GPVPlaintext<Element> &>(pt);
   auto *signatureText = static_cast<GPVSignature<Element> *>(sign);
+  shared_ptr<typename Element::Params> params = m_params->GetILParams();
 
   // Getting parameters for calculations
   size_t n = m_params->GetILParams()->GetRingDimension();
@@ -118,98 +118,30 @@ void GPVSignatureScheme<Element>::Sign(
 
   EncodingParams ep(
       std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
-
-  // Encode the text into a vector so it can be used in signing process. TODO:
-  // Adding some kind of digestion algorithm
-  vector<int64_t> digest;
-  HashUtil::Hash(plainText.GetPlaintext(), SHA_256, digest);
-  //std::cout << digest << std::endl;
-  if (plainText.GetPlaintext().size() <= n) {
-    for (size_t i = 0; i < n - 32; i = i + 4) digest.push_back(seed[i]);
-  }
-  //std::cout << digest << std::endl;
-  Plaintext hashedText(std::make_shared<CoefPackedEncoding>(
-      m_params->GetILParams(), ep, digest));
-  hashedText->Encode();
-
-  Element &u = hashedText->GetElement<Element>();
-  u.SwitchFormat();
-  //std::cout << u << std::endl;
   // Getting the trapdoor, its public matrix, perturbation matrix and gaussian
   // generator to use in sampling
   const Matrix<Element> &A = verificationKey.GetVerificationKey();
   const RLWETrapdoorPair<Element> &T = signKey.GetSignKey();
-  //std::cout << A.GetData() << std::endl;
   typename Element::DggType &dgg = m_params->GetDiscreteGaussianGenerator();
   typename Element::DggType &dggLargeSigma =
       m_params->GetDiscreteGaussianGeneratorLargeSigma();
 
   if (dimension == 1) {
+      Element u;
+      Expand_1(sparams, pt, u);
+
       Matrix<Element> zHat = RLWETrapdoorUtility<Element>::GaussSamp(n, k, A, T, u, dgg, dggLargeSigma, base);
       signatureText->SetSignature(std::make_shared<Matrix<Element>>(zHat));
   } else {
-      Matrix<Element> U = A.ExtractCol(0);
-      U.Fill(u);
-//      std::cout << U.GetRows() << std::endl;
-//      std::cout << U.GetCols() << std::endl;
+      Matrix<Element> U(Element::Allocator(params, EVALUATION), dimension, 1);
+      Expand_hash(sparams, pt, U);
+
       Matrix<Element> zHat = RLWETrapdoorUtility<Element>::GaussSampSquareVec(n, k, A, T, U, dgg, dggLargeSigma, base);
       signatureText->SetSignature(std::make_shared<Matrix<Element>>(zHat));
   }
 }
 
-// Method for signing given object
-template <class Element>
-void GPVSignatureScheme<Element>::SignMat(
-        shared_ptr<LPSignatureParameters<Element>> sparams,
-        const LPSignKey<Element> &sk, const LPVerificationKey<Element> &vk,
-        const LPSignPlaintext<Element> &pt, LPSignature<Element> *sign) {
-        auto m_params =
-                std::static_pointer_cast<GPVSignatureParameters<Element>>(sparams);
-        const auto &signKey = static_cast<const GPVSignKey<Element> &>(sk);
-        const auto &verificationKey = static_cast<const GPVVerificationKey<Element> &>(vk);
-        const auto &plainText = static_cast<const GPVPlaintext<Element> &>(pt);
-        auto *signatureText = static_cast<GPVSignature<Element> *>(sign);
-
-        // Getting parameters for calculations
-        size_t n = m_params->GetILParams()->GetRingDimension();
-        size_t k = m_params->GetK();
-        size_t base = m_params->GetBase();
-
-        EncodingParams ep(
-                std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
-
-        // Encode the text into a vector so it can be used in signing process. TODO:
-        // Adding some kind of digestion algorithm
-        vector<int64_t> digest;
-        HashUtil::Hash(plainText.GetPlaintext(), SHA_256, digest);
-        //std::cout << digest << std::endl;
-        if (plainText.GetPlaintext().size() <= n) {
-            for (size_t i = 0; i < n - 32; i = i + 4) digest.push_back(seed[i]);
-        }
-        //std::cout << digest << std::endl;
-        Plaintext hashedText(std::make_shared<CoefPackedEncoding>(
-                m_params->GetILParams(), ep, digest));
-        hashedText->Encode();
-
-        Element &u = hashedText->GetElement<Element>();
-        u.SwitchFormat();
-        //std::cout << u << std::endl;
-        // Getting the trapdoor, its public matrix, perturbation matrix and gaussian
-        // generator to use in sampling
-        const Matrix<Element> &A = verificationKey.GetVerificationKey();
-        const RLWETrapdoorPair<Element> &T = signKey.GetSignKey();
-        //std::cout << A.GetData() << std::endl;
-        typename Element::DggType &dgg = m_params->GetDiscreteGaussianGenerator();
-
-        typename Element::DggType &dggLargeSigma =
-                m_params->GetDiscreteGaussianGeneratorLargeSigma();
-        Matrix<Element> zHat = RLWETrapdoorUtility<Element>::GaussSamp(
-                n, k, A, T, u, dgg, dggLargeSigma, base);
-        signatureText->SetSignature(std::make_shared<Matrix<Element>>(zHat));
-}
-
-
-// Method for signing given object
+// Method for CRSGen given object
 template <class Element>
 void GPVSignatureScheme<Element>::CrsGen(
         shared_ptr<LPSignatureParameters<Element>> sparams,
@@ -220,7 +152,6 @@ void GPVSignatureScheme<Element>::CrsGen(
         const auto &verificationKey = static_cast<const GPVVerificationKey<Element> &>(vk);
         const auto &verificationKeyi = static_cast<const GPVVerificationKey<Element> &>(vki);
         auto *signatureText = static_cast<GPVSignature<Element> *>(sign);
-        const auto &userSeed = static_cast<const GPVPlaintext<Element> &>(usrseed);
         shared_ptr<typename Element::Params> params = m_params->GetILParams();
 
         // Getting parameters for calculations
@@ -228,21 +159,6 @@ void GPVSignatureScheme<Element>::CrsGen(
         size_t k = m_params->GetK();
         size_t base = m_params->GetBase();
         size_t dimension = m_params->GetDimension();
-
-
-        // generate bi
-        EncodingParams ep(std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
-        vector<int64_t> digest;
-        HashUtil::Hash(userSeed.GetPlaintext(), SHA_256, digest);
-        if (userSeed.GetPlaintext().size() <= n) {
-            for (size_t i = 0; i < n - 32; i = i + 4) digest.push_back(seed[i]);
-        }
-        Plaintext hashedText(std::make_shared<CoefPackedEncoding>(m_params->GetILParams(), ep, digest));
-        hashedText->Encode();
-
-        Element &bi = hashedText->GetElement<Element>();
-        bi.SwitchFormat();
-
 
         // Getting the trapdoor, its public matrix, perturbation matrix and gaussian
         // generator to use in sampling
@@ -252,17 +168,16 @@ void GPVSignatureScheme<Element>::CrsGen(
         // generate Bi * Ai
         Matrix<Element> BiAi(Element::Allocator(params, EVALUATION), Ai.GetRows(), Ai.GetCols());
         if (dimension == 1) {
+            Element bi;
+            Expand_1(sparams, usrseed, bi);
             BiAi = Ai.ScalarMult(bi);
         } else {
             Matrix<Element> Bi(Element::Allocator(params, EVALUATION), dimension, dimension);
-            Bi.Fill(bi);
+            Expand_n(sparams, usrseed, Bi);
             BiAi = Bi.Mult(Ai);
         }
 
-//        std::cout << Ai(0,0).GetModulus() << std::endl;
-//        std::cout << A(0,0).GetModulus() << std::endl;
         const RLWETrapdoorPair<Element> &T = signKey.GetSignKey();
-        //std::cout << A.GetData() << std::endl;
         typename Element::DggType &dgg = m_params->GetDiscreteGaussianGenerator();
         typename Element::DggType &dggLargeSigma =
                 m_params->GetDiscreteGaussianGeneratorLargeSigma();
@@ -275,13 +190,7 @@ void GPVSignatureScheme<Element>::CrsGen(
             }
             signatureText->SetSignature(std::make_shared<Matrix<Element>>(zHat));
         } else {
-//            std::cout << Ai.GetRows() << std::cout;
-//            std::cout << Ai.GetCols() << std::cout;
             Matrix<Element> AiEx = BiAi.Transpose();
-//            std::cout << AiEx.GetRows() << std::cout;
-//            std::cout << AiEx.GetCols() << std::cout;
-            //std::cout << AiEx.ExtractRows(0, dimension-1).GetRows() << std::endl;
-            //std::cout << AiEx.ExtractRows(0, dimension-1).GetCols() << std::endl;
             Matrix<Element> zHat =
                     RLWETrapdoorUtility<Element>::GaussSampSquareMat(n, k, A, T, AiEx.ExtractRows(0, dimension-1).Transpose(), dgg, dggLargeSigma, base);
             for (size_t col = 1; col < k + 2; col++){
@@ -378,7 +287,6 @@ bool GPVSignatureScheme<Element>::Verify(
       std::static_pointer_cast<GPVSignatureParameters<Element>>(sparams);
   const auto &verificationKey =
       static_cast<const GPVVerificationKey<Element> &>(vk);
-  const auto &plainText = static_cast<const GPVPlaintext<Element> &>(pt);
   const auto &userSeed = static_cast<const GPVPlaintext<Element> &>(usrseed);
   const auto &signatureText = static_cast<const GPVSignature<Element> &>(sign);
   size_t n = m_params->GetILParams()->GetRingDimension();
@@ -388,51 +296,25 @@ bool GPVSignatureScheme<Element>::Verify(
   size_t base = m_params->GetBase();
   size_t dimension = m_params->GetDimension();
   bool VerifyNorm = m_params->GetVerifyNormFlag();
-
   
   EncodingParams ep(
       std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
-
-  // Encode the text into a vector so it can be used in signing process. TODO:
-  // Adding some kind of digestion algorithm
-  vector<int64_t> digest;
-  Plaintext hashedText;
-  HashUtil::Hash(plainText.GetPlaintext(), SHA_256, digest);
-  if (plainText.GetPlaintext().size() <= n) {
-    for (size_t i = 0; i < n - 32; i = i + 4) digest.push_back(seed[i]);
-  }
-  hashedText =
-      std::make_shared<CoefPackedEncoding>(m_params->GetILParams(), ep, digest);
-  hashedText->Encode();
-  Element &u = hashedText->GetElement<Element>();
-  u.SwitchFormat();
-
-  // recover bi
-  vector<int64_t> seedDigest;
-  HashUtil::Hash(userSeed.GetPlaintext(), SHA_256, seedDigest);
-  if (userSeed.GetPlaintext().size() <= n) {
-      for (size_t i = 0; i < n - 32; i = i + 4) seedDigest.push_back(seed[i]);
-  }
-  Plaintext hashedSeedText(std::make_shared<CoefPackedEncoding>(m_params->GetILParams(), ep, seedDigest));
-  hashedSeedText->Encode();
-
-  Element &bi = hashedSeedText->GetElement<Element>();
-  bi.SwitchFormat();
-
 
   // Multiply signature with the verification key
   const Matrix<Element> &A = verificationKey.GetVerificationKey();
   Matrix<Element> z = signatureText.GetSignature();
 
-
   bool signatureCheck;
   if (dimension == 1){
+      Element u, bi;
+      Expand_1(sparams, pt, u);
+      Expand_1(sparams, usrseed, bi);
       signatureCheck = (u * bi == (A * z)(0, 0));
   } else {
       Matrix<Element> U(Element::Allocator(params, EVALUATION), dimension, 1);
-      U.Fill(u);
+      Expand_hash(sparams, pt, U);
       Matrix<Element> Bi(Element::Allocator(params, EVALUATION), dimension, dimension);
-      Bi.Fill(bi);
+      Expand_n(sparams, userSeed, Bi);
       // Check the verified vector is actually the encoding of the object
       signatureCheck = Bi.Mult(U).Equal(A.Mult(z));
   }
@@ -463,7 +345,7 @@ bool GPVSignatureScheme<Element>::Verify(
 }
 
 
-// Method for verifying given object & signature
+// Method for multi-party verifying given object & signature
 template <class Element>
 bool GPVSignatureScheme<Element>::VerifyMulti(
         shared_ptr<LPSignatureParameters<Element>> sparams,
@@ -474,7 +356,6 @@ bool GPVSignatureScheme<Element>::VerifyMulti(
                 std::static_pointer_cast<GPVSignatureParameters<Element>>(sparams);
         const auto &verificationKey =
                 static_cast<const GPVVerificationKey<Element> &>(vk);
-        const auto &plainText = static_cast<const GPVPlaintext<Element> &>(pt);
         const auto *userSeeds = static_cast<const GPVPlaintext<Element>*>(seeds);
         const auto &signatureText = static_cast<const GPVSignature<Element> &>(sign);
         size_t n = m_params->GetILParams()->GetRingDimension();
@@ -489,49 +370,16 @@ bool GPVSignatureScheme<Element>::VerifyMulti(
         EncodingParams ep(
                 std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
 
-        // Encode the text into a vector so it can be used in signing process. TODO:
-        // Adding some kind of digestion algorithm
-        vector<int64_t> digest;
-        Plaintext hashedText;
-        HashUtil::Hash(plainText.GetPlaintext(), SHA_256, digest);
-
-        if (plainText.GetPlaintext().size() <= n) {
-            for (size_t i = 0; i < n - 32; i = i + 4) digest.push_back(seed[i]);
-        }
-
-        hashedText =
-                std::make_shared<CoefPackedEncoding>(m_params->GetILParams(), ep, digest);
-        hashedText->Encode();
-
-        Element &u = hashedText->GetElement<Element>();
-        u.SwitchFormat();
-
-
         // recover bi s
         // TODO: pnumber write in context
         // TODO: bi write in public key
-        // TODO: redefine hash function in all palaces
         // TODO: must let Bi is invertible !!!
-        const usint pnumber = 2;
-        vector<int64_t> seedDigest[pnumber];
+        const usint pnumber = weight.GetRows();
         Element bi[pnumber];
-
-        for (size_t j = 0; j < pnumber; j++){
-            HashUtil::Hash(userSeeds[j].GetPlaintext(), SHA_256, seedDigest[j]);
-            if (userSeeds[j].GetPlaintext().size() <= n) {
-                for (size_t i = 0; i < n - 32; i = i + 4) seedDigest[j].push_back(seed[i]);
-            }
-            Plaintext hashedSeedText(std::make_shared<CoefPackedEncoding>(m_params->GetILParams(), ep, seedDigest[j]));
-            hashedSeedText->Encode();
-            bi[j] = hashedSeedText->GetElement<Element>();
-            bi[j].SwitchFormat();
-        }
-
 
         // Multiply signature with the verification key
         const Matrix<Element> &A = verificationKey.GetVerificationKey();
         Matrix<Element> z = signatureText.GetSignature();
-        //std::cout << (A * z)(0, 0) << std::endl;
 
         // TODO: only two add to \rho
         Element u_weight;
@@ -539,14 +387,21 @@ bool GPVSignatureScheme<Element>::VerifyMulti(
         Matrix<Element> U_weight(Element::Allocator(params, EVALUATION), dimension, 1);
 
         if (dimension == 1){
-            u_weight = u * (weight(1, 1) * bi[0] + weight(2, 2) * bi[1]);
+            Element u;
+            Expand_1(sparams, pt, u);
+            for (size_t j = 0; j < pnumber; j++){
+                Expand_1(sparams, userSeeds[j], bi[j]);
+            }
+
+            u_weight = u * (weight(0, 0) * bi[0] + weight(1, 1) * bi[1]);
         } else {
-            U.Fill(u);
-            Matrix<Element> Bi_1(Element::Allocator(params, EVALUATION), dimension, dimension);
-            Bi_1.Fill(bi[0]);
-            Matrix<Element> Bi_2(Element::Allocator(params, EVALUATION), dimension, dimension);
-            Bi_2.Fill(bi[1]);
-            U_weight = (Bi_1.ScalarMult(weight(1, 1)).Add(Bi_2.ScalarMult(weight(2, 2)))).Mult(U);
+            Expand_hash(sparams, pt, U);
+            std::vector<Matrix<Element>> Bi(pnumber, Matrix<Element>(Element::Allocator(params, EVALUATION), dimension, dimension));;
+            for (size_t j = 0; j < pnumber; j++) {
+                Expand_n(sparams, userSeeds[j], Bi[j]);
+            }
+
+            U_weight = (Bi[0].ScalarMult(weight(0, 0)).Add(Bi[1].ScalarMult(weight(1, 1)))).Mult(U);
         }
 
         // Check the verified vector is actually the encoding of the object
@@ -582,6 +437,86 @@ bool GPVSignatureScheme<Element>::VerifyMulti(
         return signatureCheck;
     }
 
+// Expand n * n
+template <class Element>
+void GPVSignatureScheme<Element>::Expand_n(shared_ptr<LPSignatureParameters<Element>> sparams,
+        const LPSignPlaintext<Element> &pt, Matrix<Element> &Bi) {
+    auto m_params = std::static_pointer_cast<GPVSignatureParameters<Element>>(sparams);
+    shared_ptr<typename Element::Params> params = m_params->GetILParams();
+    size_t dimension = m_params->GetDimension();
+    const auto &plainText = static_cast<const GPVPlaintext<Element> &>(pt);
+    EncodingParams ep(std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
 
-}  // namespace lbcrypto
+    for (usint i = 0; i < dimension; i++){
+        for (usint j = 0; j < dimension; j++){
+            vector<int64_t> digest;
+            HashUtil::Hash(plainText.GetPlaintext() + std::to_string(i) + std::to_string(j), SHA_256, digest);
+            Plaintext hashedText(std::make_shared<CoefPackedEncoding>(
+                    m_params->GetILParams(), ep, digest));
+            hashedText->Encode();
+            Element &bi = hashedText->GetElement<Element>();
+            bi.SwitchFormat();
+            Bi(i, j) = bi;
+        }
+    }
+
+}
+
+// Expand n * 1
+template <class Element>
+void GPVSignatureScheme<Element>::Expand_hash(shared_ptr<LPSignatureParameters<Element>> sparams,
+                                               const LPSignPlaintext<Element> &pt, Matrix<Element> &H) {
+    auto m_params = std::static_pointer_cast<GPVSignatureParameters<Element>>(sparams);
+    shared_ptr<typename Element::Params> params = m_params->GetILParams();
+    size_t dimension = m_params->GetDimension();
+    const auto &plainText = static_cast<const GPVPlaintext<Element> &>(pt);
+    EncodingParams ep(std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
+
+    for (usint i = 0; i < dimension; i++){
+        vector<int64_t> digest;
+        HashUtil::Hash(plainText.GetPlaintext() + std::to_string(i), SHA_256, digest);
+        Plaintext hashedText(std::make_shared<CoefPackedEncoding>(
+                m_params->GetILParams(), ep, digest));
+        hashedText->Encode();
+        Element &bi = hashedText->GetElement<Element>();
+        bi.SwitchFormat();
+        H(i, 0) = bi;
+    }
+}
+
+// Expand 1
+template <class Element>
+void GPVSignatureScheme<Element>::Expand_1(shared_ptr<LPSignatureParameters<Element>> sparams,
+        const LPSignPlaintext<Element> &pt, Element &bi) {
+    auto m_params = std::static_pointer_cast<GPVSignatureParameters<Element>>(sparams);
+    size_t n = m_params->GetILParams()->GetRingDimension();
+    const auto &plainText = static_cast<const GPVPlaintext<Element> &>(pt);
+    EncodingParams ep(std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
+
+
+    vector<int64_t> digest;
+    HashUtil::Hash(plainText.GetPlaintext(), SHA_256, digest);
+    if (plainText.GetPlaintext().size() <= n) {
+        for (size_t i = 0; i < n - 32; i = i + 4) digest.push_back(seed[i]);
+    }
+    Plaintext hashedText(std::make_shared<CoefPackedEncoding>(
+            m_params->GetILParams(), ep, digest));
+    hashedText->Encode();
+
+    bi = hashedText->GetElement<Element>();
+    bi.SwitchFormat();
+}
+
+}// namespace lbcrypto
+
+
+
+
+
+
+
+
+
+
+
 #endif

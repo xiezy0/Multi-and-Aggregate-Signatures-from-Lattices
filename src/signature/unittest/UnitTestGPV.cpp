@@ -174,11 +174,11 @@ TEST(UTignatureGPV, lattice_based_non_interactive_multi_signature) {
     //size_t k = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetK();
 
     // aggregation
-    Matrix<Poly> omega_all(zero_alloc, 5, 5, uniform_alloc);
+    Matrix<Poly> omega_all(zero_alloc, 2, 2, uniform_alloc);
     //std::cout << omega_all.GetData() << std::endl;
     //
-    Matrix<Poly> s1 = Sigma_1_Matrix.ScalarMult(omega_all(1,1));
-    Matrix<Poly> s2 = Sigma_2_Matrix.ScalarMult(omega_all(2,2));
+    Matrix<Poly> s1 = Sigma_1_Matrix.ScalarMult(omega_all(0,0));
+    Matrix<Poly> s2 = Sigma_2_Matrix.ScalarMult(omega_all(1,1));
     Matrix<Poly> Sigma_Alpha_Matrix = s1.Add(s2);
     GPVSignature<Poly> Sigma_Alpha;
     Sigma_Alpha.SetSignature(std::make_shared<Matrix<Poly>>(Sigma_Alpha_Matrix));
@@ -346,10 +346,10 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_multi_signature_square_matrix
 
     // aggregation
     TIC(t1);
-    Matrix<Poly> omega_all(zero_alloc, 5, 5, uniform_alloc);
+    Matrix<Poly> omega_all(zero_alloc, pnumber, pnumber, uniform_alloc);
     //
-    Matrix<Poly> s1 = Sigma_1_Matrix.ScalarMult(omega_all(1,1));
-    Matrix<Poly> s2 = Sigma_2_Matrix.ScalarMult(omega_all(2,2));
+    Matrix<Poly> s1 = Sigma_1_Matrix.ScalarMult(omega_all(0,0));
+    Matrix<Poly> s2 = Sigma_2_Matrix.ScalarMult(omega_all(1,1));
     Matrix<Poly> Sigma_Alpha_Matrix = s1.Add(s2);
     GPVSignature<Poly> Sigma_Alpha;
     Sigma_Alpha.SetSignature(std::make_shared<Matrix<Poly>>(Sigma_Alpha_Matrix));

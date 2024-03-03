@@ -168,12 +168,6 @@ class LPSignatureScheme {
                     const LPSignPlaintext<Element> &pt,
                     LPSignature<Element> *sign);
 
-  virtual void SignMat(shared_ptr<LPSignatureParameters<Element>> m_params,
-                    const LPSignKey<Element> &sk,
-                    const LPVerificationKey<Element> &vk,
-                    const LPSignPlaintext<Element> &pt,
-                    LPSignature<Element> *sign);
-
 
   virtual void CrsGen(shared_ptr<LPSignatureParameters<Element>> m_params,
                       const LPSignKey<Element> &sk,
@@ -227,6 +221,10 @@ class LPSignatureScheme {
                         const LPSignPlaintext<Element> &pt,
                         const Matrix<Element> &weight,
                         const LPSignPlaintext<Element> seeds[]);
+
+    virtual void Expand_1(shared_ptr<LPSignatureParameters<Element>> sparams, const LPSignPlaintext<Element> &pt, Element &bi);
+    virtual void Expand_n(shared_ptr<LPSignatureParameters<Element>> sparams, const LPSignPlaintext<Element> &pt, Matrix<Element> &Bi);
+    virtual void Expand_hash(shared_ptr<LPSignatureParameters<Element>> sparams, const LPSignPlaintext<Element> &pt, Matrix<Element> &Bi);
   /*
    * @brief Dummy method to force abstract base class
    */

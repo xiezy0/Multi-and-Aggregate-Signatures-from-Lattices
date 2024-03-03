@@ -375,10 +375,6 @@ class GPVSignatureScheme : public LPSignatureScheme<Element> {
             const LPSignKey<Element>& sk, const LPVerificationKey<Element>& vk,
             const LPSignPlaintext<Element>& pt, LPSignature<Element>* sign);
 
-  void SignMat(shared_ptr<LPSignatureParameters<Element>> m_params,
-              const LPSignKey<Element>& sk, const LPVerificationKey<Element>& vk,
-              const LPSignPlaintext<Element>& pt, LPSignature<Element>* sign);
-
   void CrsGen(shared_ptr<LPSignatureParameters<Element>> m_params,
               const LPSignKey<Element>& sk, const LPVerificationKey<Element>& vk,
               const LPVerificationKey<Element>& vki, const LPSignPlaintext<Element>& usrseed,
@@ -431,6 +427,11 @@ class GPVSignatureScheme : public LPSignatureScheme<Element> {
               const LPSignPlaintext<Element>& pt,
               const Matrix<Element> &weight,
               const LPSignPlaintext<Element> seeds[]);
+
+
+  void Expand_1(shared_ptr<LPSignatureParameters<Element>> sparams, const LPSignPlaintext<Element> &pt, Element &bi);
+  void Expand_n(shared_ptr<LPSignatureParameters<Element>> sparams, const LPSignPlaintext<Element> &pt, Matrix<Element> &Bi);
+  void Expand_hash(shared_ptr<LPSignatureParameters<Element>> sparams, const LPSignPlaintext<Element> &pt, Matrix<Element> &Bi);
 
   /**
    *
