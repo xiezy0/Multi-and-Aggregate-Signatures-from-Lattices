@@ -371,48 +371,45 @@ bool GPVSignatureScheme<Element>::VerifyMulti(
                 std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
 
         // recover bi s
-        // TODO: pnumber write in context
         // TODO: bi write in public key
         const usint pnumber = weight.GetRows();
-        Element bi[pnumber];
+
 
         // Multiply signature with the verification key
         const Matrix<Element> &A = verificationKey.GetVerificationKey();
         Matrix<Element> z = signatureText.GetSignature();
 
-        // TODO: only two add to \rho
-        Element u_weight;
+        Matrix<Element> u_weight_matrix(Element::Allocator(params, EVALUATION), 1, 1);
+        Element u_weight = u_weight_matrix(0, 0);
         Matrix<Element> U(Element::Allocator(params, EVALUATION), dimension, 1);
-        Matrix<Element> U_weight(Element::Allocator(params, EVALUATION), dimension, 1);
+        Matrix<Element> U_weight(Element::Allocator(params, EVALUATION), dimension, dimension);
+        Element u;
 
         if (dimension == 1){
-            Element u;
             Expand_1(sparams, pt, u);
-            for (size_t j = 0; j < pnumber; j++){
-                Expand_1(sparams, userSeeds[j], bi[j]);
+            for (size_t i = 0; i < pnumber; i++){
+                Element bi;
+                Expand_1(sparams, userSeeds[i], bi);
+                u_weight = u_weight + weight(i, 0) * bi;
             }
-
-            u_weight = u * (weight(0, 0) * bi[0] + weight(1, 1) * bi[1]);
         } else {
             Expand_hash(sparams, pt, U);
-            std::vector<Matrix<Element>> Bi(pnumber, Matrix<Element>(Element::Allocator(params, EVALUATION), dimension, dimension));;
-            for (size_t j = 0; j < pnumber; j++) {
-                Expand_n(sparams, userSeeds[j], Bi[j]);
+            for (size_t i = 0; i < pnumber; i++) {
+                Matrix<Element> Bi(Element::Allocator(params, EVALUATION), dimension, dimension);
+                Expand_n(sparams, userSeeds[i], Bi);
+                U_weight = U_weight.Add(Bi.ScalarMult(weight(i, 0)));
             }
-
-            U_weight = (Bi[0].ScalarMult(weight(0, 0)).Add(Bi[1].ScalarMult(weight(1, 1)))).Mult(U);
         }
 
         // Check the verified vector is actually the encoding of the object
         bool signatureCheck;
         if (dimension == 1){
-            signatureCheck = (u_weight == (A * z)(0, 0));
+            signatureCheck = (u_weight * u == (A * z)(0, 0));
         } else {
-            signatureCheck = U_weight.Equal(A.Mult(z));
+            signatureCheck = U_weight.Mult(U).Equal(A.Mult(z));
         }
 
         if (VerifyNorm == true) {
-
             //expected bound on the signature
             //spectral_bound,
             double s = SPECTRAL_BOUND(n, k+2, base);
