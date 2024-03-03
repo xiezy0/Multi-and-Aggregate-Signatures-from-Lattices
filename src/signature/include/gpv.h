@@ -120,10 +120,10 @@ class GPVPlaintext : public LPSignPlaintext<Element> {
    *Destructor
    */
   ~GPVPlaintext() {}
-
+  string m_plaintext;
  private:
   // String as plaintext to be signed
-  string m_plaintext;
+
   /*
    *@brief Overloaded dummy method
    */

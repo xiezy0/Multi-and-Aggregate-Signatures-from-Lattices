@@ -373,7 +373,6 @@ bool GPVSignatureScheme<Element>::VerifyMulti(
         // recover bi s
         // TODO: pnumber write in context
         // TODO: bi write in public key
-        // TODO: must let Bi is invertible !!!
         const usint pnumber = weight.GetRows();
         Element bi[pnumber];
 
@@ -446,19 +445,32 @@ void GPVSignatureScheme<Element>::Expand_n(shared_ptr<LPSignatureParameters<Elem
     size_t dimension = m_params->GetDimension();
     const auto &plainText = static_cast<const GPVPlaintext<Element> &>(pt);
     EncodingParams ep(std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
+    size_t nonce = 0;
 
-    for (usint i = 0; i < dimension; i++){
-        for (usint j = 0; j < dimension; j++){
-            vector<int64_t> digest;
-            HashUtil::Hash(plainText.GetPlaintext() + std::to_string(i) + std::to_string(j), SHA_256, digest);
-            Plaintext hashedText(std::make_shared<CoefPackedEncoding>(
-                    m_params->GetILParams(), ep, digest));
-            hashedText->Encode();
-            Element &bi = hashedText->GetElement<Element>();
-            bi.SwitchFormat();
-            Bi(i, j) = bi;
+    while(true) {
+        for (usint i = 0; i < dimension; i++){
+            for (usint j = 0; j < dimension; j++){
+                vector<int64_t> digest;
+                HashUtil::Hash(plainText.GetPlaintext() + std::to_string(i) + std::to_string(j) + std::to_string(nonce), SHA_256, digest);
+                Plaintext hashedText(std::make_shared<CoefPackedEncoding>(
+                        m_params->GetILParams(), ep, digest));
+                hashedText->Encode();
+                Element &bi = hashedText->GetElement<Element>();
+                bi.SwitchFormat();
+                Bi(i, j) = bi;
+            }
+        }
+        Matrix<Element> initdeterm(Element::Allocator(params, EVALUATION), 1, 1);
+        Element &determ = initdeterm(0, 0);
+        Matrix<Element> zero(Element::Allocator(params, EVALUATION), 1, 1);
+        Bi.Determinant(&determ);
+        if (determ != zero(0, 0)) {
+            break;
+        } else {
+            nonce++;
         }
     }
+
 
 }
 
