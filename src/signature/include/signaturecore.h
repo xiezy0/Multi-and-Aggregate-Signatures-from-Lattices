@@ -215,12 +215,19 @@ class LPSignatureScheme {
                       const LPSignPlaintext<Element> &pt,
                       const LPSignPlaintext<Element> &seed);
 
-    virtual bool VerifyMulti(shared_ptr<LPSignatureParameters<Element>> m_params,
-                        const LPVerificationKey<Element> &vk,
-                        const LPSignature<Element> &sign,
-                        const LPSignPlaintext<Element> &pt,
-                        const Matrix<Element> &weight,
-                        const LPSignPlaintext<Element> seeds[]);
+  virtual bool VerifyMulti(shared_ptr<LPSignatureParameters<Element>> m_params,
+                           const LPVerificationKey<Element> &vk,
+                           const LPSignature<Element> &sign,
+                           const LPSignPlaintext<Element> &pt,
+                           const Matrix<Element> &weight,
+                           const LPSignPlaintext<Element> seeds[]);
+
+  virtual bool VerifyAggre(shared_ptr<LPSignatureParameters<Element>> m_params,
+                           const LPVerificationKey<Element> &vk,
+                           const LPSignature<Element> &sign,
+                           const LPSignPlaintext<Element> pts[],
+                           const Matrix<Element> &weight,
+                           const LPSignPlaintext<Element> seeds[]);
 
     virtual void Expand_1(shared_ptr<LPSignatureParameters<Element>> sparams, const LPSignPlaintext<Element> &pt, Element &bi);
     virtual void Expand_n(shared_ptr<LPSignatureParameters<Element>> sparams, const LPSignPlaintext<Element> &pt, Matrix<Element> &Bi);

@@ -433,6 +433,97 @@ bool GPVSignatureScheme<Element>::VerifyMulti(
         return signatureCheck;
     }
 
+
+// Method for aggre-party verifying given object & signature
+template <class Element>
+bool GPVSignatureScheme<Element>::VerifyAggre(
+        shared_ptr<LPSignatureParameters<Element>> sparams,
+        const LPVerificationKey<Element> &vk, const LPSignature<Element> &sign,
+        const LPSignPlaintext<Element> pts[], const Matrix<Element> &weight,
+        const LPSignPlaintext<Element> seeds[]) {
+        auto m_params =
+                std::static_pointer_cast<GPVSignatureParameters<Element>>(sparams);
+        const auto &verificationKey =
+                static_cast<const GPVVerificationKey<Element> &>(vk);
+        const auto *userSeeds = static_cast<const GPVPlaintext<Element>*>(seeds);
+        const auto *plaintexts = static_cast<const GPVPlaintext<Element>*>(pts);
+
+        const auto &signatureText = static_cast<const GPVSignature<Element> &>(sign);
+        size_t n = m_params->GetILParams()->GetRingDimension();
+        shared_ptr<typename Element::Params> params = m_params->GetILParams();
+
+        size_t k = m_params->GetK();
+        size_t base = m_params->GetBase();
+        size_t dimension = m_params->GetDimension();
+        bool VerifyNorm = m_params->GetVerifyNormFlag();
+
+
+        EncodingParams ep(
+                std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
+
+        // recover bi s
+        // TODO: bi write in public key
+        const usint pnumber = weight.GetRows();
+
+
+        // Multiply signature with the verification key
+        const Matrix<Element> &A = verificationKey.GetVerificationKey();
+        Matrix<Element> z = signatureText.GetSignature();
+
+        Matrix<Element> u_weight_matrix(Element::Allocator(params, EVALUATION), 1, 1);
+        Element u_weight = u_weight_matrix(0, 0);
+        Matrix<Element> U_weight(Element::Allocator(params, EVALUATION), dimension, 1);
+        if (dimension == 1){
+
+            for (size_t i = 0; i < pnumber; i++){
+                Element bi, u;
+                Expand_1(sparams, plaintexts[i], u);
+                Expand_1(sparams, userSeeds[i], bi);
+                u_weight = u_weight + weight(i, 0) * bi * u;
+            }
+        } else {
+
+            for (size_t i = 0; i < pnumber; i++) {
+                Matrix<Element> U(Element::Allocator(params, EVALUATION), dimension, 1);
+                Matrix<Element> Bi(Element::Allocator(params, EVALUATION), dimension, dimension);
+                Expand_hash(sparams, plaintexts[i], U);
+                Expand_n(sparams, userSeeds[i], Bi);
+                U_weight = U_weight.Add(Bi.ScalarMult(weight(i, 0)).Mult(U));
+            }
+        }
+
+        // Check the verified vector is actually the encoding of the object
+        bool signatureCheck;
+        if (dimension == 1){
+            signatureCheck = (u_weight == (A * z)(0, 0));
+        } else {
+            signatureCheck = U_weight.Equal(A.Mult(z));
+        }
+
+        if (VerifyNorm == true) {
+            //expected bound on the signature
+            //spectral_bound,
+            double s = SPECTRAL_BOUND(n, k+2, base);
+
+            //k (m in paper)
+            double inf_sign_bound = s;
+            double euc_sign_bound = sqrt(n*(k+2))*s;
+
+            //compute euclidean norm of signature and check that it is less than the expected bound
+            z.SetFormat(Format::COEFFICIENT);
+            double z_inf_norm = z.Norm();
+            double z_euc_norm = z.EuclideanNorm();
+
+            if (z_inf_norm > 5*inf_sign_bound || (z_euc_norm > euc_sign_bound))
+            {
+                //PALISADE_THROW(math_error, "Signature norm is larger than the expected bounds");
+            }
+
+        }
+
+        return signatureCheck;
+    }
+
 // Expand n * n
 template <class Element>
 void GPVSignatureScheme<Element>::Expand_n(shared_ptr<LPSignatureParameters<Element>> sparams,

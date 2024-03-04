@@ -428,6 +428,13 @@ class GPVSignatureScheme : public LPSignatureScheme<Element> {
               const Matrix<Element> &weight,
               const LPSignPlaintext<Element> seeds[]);
 
+  bool VerifyAggre(shared_ptr<LPSignatureParameters<Element>> m_params,
+                   const LPVerificationKey<Element> &vk,
+                   const LPSignature<Element> &sign,
+                   const LPSignPlaintext<Element> pts[],
+                   const Matrix<Element> &weight,
+                   const LPSignPlaintext<Element> seeds[]);
+
 
   void Expand_1(shared_ptr<LPSignatureParameters<Element>> sparams, const LPSignPlaintext<Element> &pt, Element &bi);
   void Expand_n(shared_ptr<LPSignatureParameters<Element>> sparams, const LPSignPlaintext<Element> &pt, Matrix<Element> &Bi);

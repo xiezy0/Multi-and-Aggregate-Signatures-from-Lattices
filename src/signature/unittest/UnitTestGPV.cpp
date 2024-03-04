@@ -158,15 +158,15 @@ TEST(UTignatureGPV, lattice_based_non_interactive_multi_signature) {
     }
 
     // uniform_alloc
-    shared_ptr<typename Poly ::Params> params =
-            std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetILParams();
+    auto m_params = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params);
+    shared_ptr<typename Poly ::Params> params = m_params->GetILParams();
     auto uniform_alloc = Poly::MakeDiscreteUniformAllocator(params, EVALUATION);
     auto zero_alloc = Poly::Allocator(params, EVALUATION);
     size_t k = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetK();
 
     // aggregation
     Matrix<Poly> omega_all(zero_alloc, pnumber, 1, uniform_alloc);
-    Matrix<Poly> Sigma_Alpha_Matrix(zero_alloc, k + 2, 1);
+    Matrix<Poly> Sigma_Alpha_Matrix(zero_alloc, m_params->GetDimension() * k + 2, 1);
     for(usint i = 0; i < pnumber; i++) {
         Sigma_Alpha_Matrix = Sigma_Alpha_Matrix.Add(Sigmai[i].GetSignature().ScalarMult(omega_all(i,0)));
     }
@@ -324,110 +324,110 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_multi_signature_square_matrix
 
     duration = TOC(t_all);
     std::cout << "All Time: " << duration << " ms" << std::endl;
-
-//
-//
-//
-//    double duration = 0.0;
-//    TimeVar t1, t_all;
-//    TIC(t1);
-//    TIC(t_all);
-//
-//    // Create setup key
-//    GPVVerificationKey<Poly> A;
-//    GPVSignKey<Poly> T;
-//    context.KeyGen(&T, &A);
-//
-//    duration = TOC(t1);
-//    std::cout << "Setup Time: " << duration << " ms" << std::endl;
-//
-//    TIC(t1);
-//    // User 1 : Create public key and private key
-//    GPVVerificationKey<Poly> A_1;
-//    GPVSignKey<Poly> T_1;
-//    GPVPlaintext<Poly> seed1;
-//    string seed1_str = "seed1";
-//    seed1.SetPlaintext(seed1_str);
-//    context.KeyGen(&T_1, &A_1);
-//    duration = TOC(t1);
-//    std::cout << "Generate Key Time: " << duration << " ms" << std::endl;
-//    // User 2 : Create public key and private key
-//    GPVVerificationKey<Poly> A_2;
-//    GPVSignKey<Poly> T_2;
-//    GPVPlaintext<Poly> seed2;
-//    string seed2_str = "seed2";
-//    seed2.SetPlaintext(seed2_str);
-//    context.KeyGen(&T_2, &A_2);
-//
-//    TIC(t1);
-//    // User 1 : presign
-//    GPVSignature<Poly> R_1;
-//    context.CrsGen(A_1, T, A, seed1, &R_1);
-//    duration = TOC(t1);
-//    std::cout << "Crs Gen Time: " << duration << " ms" << std::endl;
-//    // User 2 : presign
-//    GPVSignature<Poly> R_2;
-//    context.CrsGen(A_2, T, A, seed2, &R_2);
-//    //std::cout << Ri.GetSignature().GetRows() << std::endl;
-//
-//    TIC(t1);
-//    // User 1 : sign
-//    GPVSignature<Poly> Sigma_1_Hat, Sigma_1;
-//    context.Sign(plaintext, T_1, A_1, &Sigma_1_Hat);
-//    Matrix<Poly> Sigma_1_Matrix = R_1.GetSignature().Mult(Sigma_1_Hat.GetSignature());
-//    Sigma_1.SetSignature(std::make_shared<Matrix<Poly>>(Sigma_1_Matrix));
-//    duration = TOC(t1);
-//    std::cout << "Sign Time: " << duration << " ms" << std::endl;
-//
-//    // User 2 : sign
-//    GPVSignature<Poly> Sigma_2_Hat, Sigma_2;
-//    context.Sign(plaintext, T_2, A_2, &Sigma_2_Hat);
-//    Matrix<Poly> Sigma_2_Matrix = R_2.GetSignature().Mult(Sigma_2_Hat.GetSignature());
-//    Sigma_2.SetSignature(std::make_shared<Matrix<Poly>>(Sigma_2_Matrix));
-//
-//    // uniform_alloc define
-//    shared_ptr<typename Poly ::Params> params =
-//            std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetILParams();
-//    auto uniform_alloc = Poly::MakeDiscreteUniformAllocator(params, EVALUATION);
-//    auto zero_alloc = Poly::Allocator(params, EVALUATION);
-//    //size_t k = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetK();
-//
-//    // aggregation
-//    TIC(t1);
-//    Matrix<Poly> omega_all(zero_alloc, pnumber, pnumber, uniform_alloc);
-//    //
-//    Matrix<Poly> s1 = Sigma_1_Matrix.ScalarMult(omega_all(0,0));
-//    Matrix<Poly> s2 = Sigma_2_Matrix.ScalarMult(omega_all(1,1));
-//    Matrix<Poly> Sigma_Alpha_Matrix = s1.Add(s2);
-//    GPVSignature<Poly> Sigma_Alpha;
-//    Sigma_Alpha.SetSignature(std::make_shared<Matrix<Poly>>(Sigma_Alpha_Matrix));
-//    duration = TOC(t1);
-//    std::cout << "Aggregation Time: " << duration << " ms" << std::endl;
-//
-//    TIC(t1);
-//
-//
-//
-//    GPVPlaintext<Poly> seeds[pnumber];
-//    seeds[0] = seed1;
-//    seeds[1] = seed2;
-//
-//    // verify
-//    bool result = context.VerifyMulti(plaintext, Sigma_Alpha, A, omega_all, seeds);
-//    duration = TOC(t1);
-//    std::cout << "Verify Time: " << duration << " ms" << std::endl;
-//
-//    bool result1 = context.Verify(plaintext, Sigma_1, A, seed1);
-//    bool result2 = context.Verify(plaintext, Sigma_2, A, seed2);
-//
-//    duration = TOC(t_all);
-//    std::cout << "All Time: " << duration << " ms" << std::endl;
-//    std::cout << "User1 signature test: " << result1 << std::endl;
-//    std::cout << "User1 signature test: " << result2 << std::endl;
-//    std::cout << "multi-signature test: " << result << std::endl;
 }
 
+// TEST lattice-based non-interactive aggre-signature square matrix
+TEST(UTSignatureGPV, lattice_based_non_interactive_aggre_signature_square_matrix) {
+    std::cout << "This is a demo file of the GPV signature scheme" << std::endl
+              << std::endl;
+    // We generate a signature context and make it a GPV context with ring size,
+    // you can also explicitly define ringsize, modulus bitwidth and base
+    SignatureContext<Poly> context;
+    usint ringsize = 512;
+    const usint pnumber = 3;
+    std::cout << "Used ring size for calculations: " << ringsize << std::endl;
+    std::cout << "Generating context for GPV signature" << std::endl << std::endl;
+    context.GenerateGPVContext(ringsize, true);//todo:add verifyparameter
 
+    // define plaintexts
+    GPVPlaintext<Poly> plaintexti[pnumber];
+    for(usint i = 0; i < pnumber; i++) {
+        plaintexti[i].SetPlaintext("This is a test " + std::to_string(i));
+    }
+
+    double duration;
+    TimeVar t1, t_all;
+    TIC(t1);
+    TIC(t_all);
+
+    // Create setup key
+    GPVVerificationKey<Poly> A;
+    GPVSignKey<Poly> T;
+    context.KeyGen(&T, &A);
+
+    duration = TOC(t1);
+    std::cout << "Setup Time: " << duration << " ms" << std::endl;
+
+    // p Users : Create public key and private key and seeds
+    TIC(t1);
+    GPVVerificationKey<Poly> Ai[pnumber];
+    GPVSignKey<Poly> Ti[pnumber];
+    GPVPlaintext<Poly> seedi[pnumber];
+    for(usint i = 0; i < pnumber; i++) {
+        context.KeyGen(&Ti[i], &Ai[i]);
+        string seedi_str = "seed" + std::to_string(i);
+        seedi[i].SetPlaintext(seedi_str);
+    }
+    duration = TOC(t1);
+    std::cout << "Generate Key Time: " << duration << " ms" << std::endl;
+
+    // p Users : presign
+    TIC(t1);
+    GPVSignature<Poly> Ri[pnumber];
+    for(usint i = 0; i < pnumber; i++) {
+        context.CrsGen(Ai[i], T, A, seedi[i], &Ri[i]);
+    }
+    duration = TOC(t1);
+    std::cout << "Crs Gen Time: " << duration << " ms" << std::endl;
+
+    // p Users : sign
+    TIC(t1);
+    GPVSignature<Poly> Sigmai[pnumber];
+    for(usint i = 0; i < pnumber; i++) {
+        GPVSignature<Poly> Sigmai_Hat;
+        context.Sign(plaintexti[i], Ti[i], Ai[i], &Sigmai_Hat);
+        Matrix<Poly> Sigmai_Matrix = Ri[i].GetSignature().Mult(Sigmai_Hat.GetSignature());
+        Sigmai[i].SetSignature(std::make_shared<Matrix<Poly>>(Sigmai_Matrix));
+    }
+    duration = TOC(t1);
+    std::cout << "Sign Time: " << duration << " ms" << std::endl;
+
+
+    // uniform_alloc
+    auto m_params = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params);
+    shared_ptr<typename Poly ::Params> params = m_params->GetILParams();
+    auto uniform_alloc = Poly::MakeDiscreteUniformAllocator(params, EVALUATION);
+    auto zero_alloc = Poly::Allocator(params, EVALUATION);
+    size_t k = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetK();
+
+    // aggregation
+    Matrix<Poly> omega_all(zero_alloc, pnumber, 1, uniform_alloc);
+    Matrix<Poly> Sigma_Alpha_Matrix(zero_alloc, m_params->GetDimension() * (k + 2), 1);
+    for(usint i = 0; i < pnumber; i++) {
+        Sigma_Alpha_Matrix = Sigma_Alpha_Matrix.Add(Sigmai[i].GetSignature().ScalarMult(omega_all(i,0)));
+    }
+    GPVSignature<Poly> Sigma_Alpha;
+    Sigma_Alpha.SetSignature(std::make_shared<Matrix<Poly>>(Sigma_Alpha_Matrix));
+
+    duration = TOC(t1);
+    std::cout << "Aggregation Time: " << duration << " ms" << std::endl;
+
+    // Verify
+    TIC(t1);
+    bool result = context.VerifyAggre(plaintexti, Sigma_Alpha, A, omega_all, seedi);
+    duration = TOC(t1);
+    std::cout << "Aggre-Verify Time: " << duration << " ms" << std::endl;
+
+    for(usint i = 0; i < pnumber; i++) {
+        bool resulti = context.Verify(plaintexti[i], Sigmai[i], A, seedi[i]);
+        std::cout << "User" << i <<  " signature test: " << resulti << std::endl;
+    }
+
+    std::cout << "multi-signature test: " << result << std::endl;
+
+    duration = TOC(t_all);
+    std::cout << "All Time: " << duration << " ms" << std::endl;
+}
 //TEST(UTSignatureGPV, simple_sign_verify_native_below_sixty_bits) {
 //  DEBUG_FLAG(false);
 //

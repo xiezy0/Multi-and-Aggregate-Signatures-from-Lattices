@@ -111,6 +111,12 @@ class SignatureContext {
                    const Matrix<Element>& weight,
                    const LPSignPlaintext<Element> seeds[]);
 
+  bool VerifyAggre(const LPSignPlaintext<Element> pts[],
+                   const LPSignature<Element>& signature,
+                   const LPVerificationKey<Element>& vk,
+                   const Matrix<Element>& weight,
+                   const LPSignPlaintext<Element> seeds[]);
+
   shared_ptr<LPSignatureParameters<Element>> m_params;
 
  private:
