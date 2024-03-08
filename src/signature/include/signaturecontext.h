@@ -46,7 +46,7 @@ class SignatureContext {
    *@param bitwidth Desired modulus bitwidth
    *@param base Base of the gadget matrix
    */
-  void GenerateGPVContext(usint ringsize, usint bitwidth, usint base, bool VerifyNorm=false, usint dimension = 1);
+  void GenerateGPVContext(usint ringsize, usint bitwidth, usint base, bool VerifyNorm=false, usint dimension = 1, usint k0 = 1, usint k1 = 1);
   /**
    *@brief Method for setting up a GPV context with desired ring size only
    *@param ringsize Desired ring size
@@ -57,7 +57,7 @@ class SignatureContext {
    *@param sk Signing key for sign operation - Output
    *@param vk Verification key for verify operation - Output
    */
-  void KeyGen(LPSignKey<Element>* sk, LPVerificationKey<Element>* vk);
+  void KeyGen(LPSignKey<Element>* sk, LPVerificationKey<Element>* vk, bool setup = false);
   /**
    *@brief Method for signing a given plaintext
    *@param pt Plaintext to be signed

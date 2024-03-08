@@ -36,8 +36,7 @@ namespace lbcrypto {
 // Method for generating signing and verification keys
 template <class Element>
 void GPVSignatureScheme<Element>::KeyGen(
-    shared_ptr<LPSignatureParameters<Element>> sparams, LPSignKey<Element> *sk,
-    LPVerificationKey<Element> *vk) {
+    shared_ptr<LPSignatureParameters<Element>> sparams, LPSignKey<Element> *sk, LPVerificationKey<Element> *vk, bool setup) {
   auto *signKey = static_cast<GPVSignKey<Element> *>(sk);
   auto *verificationKey = static_cast<GPVVerificationKey<Element> *>(vk);
   auto m_params =
@@ -47,6 +46,16 @@ void GPVSignatureScheme<Element>::KeyGen(
   auto stddev = m_params->GetDiscreteGaussianGenerator().GetStd();
   usint base = m_params->GetBase();
   usint dimension = m_params->GetDimension();
+  usint k = 0;
+  if ( m_params->GetK0() == 1 && m_params->GetK0() == 1 ) {
+      k = 0;
+  } else {
+      if (setup) {
+          k = m_params->GetK0();
+      } else {
+          k = m_params->GetK1();
+      }
+  }
   //std::cout << dimension << std::endl;
 
   // Generate trapdoor based using parameters and
@@ -67,8 +76,7 @@ void GPVSignatureScheme<Element>::KeyGen(
       signKey->SetSignKey(
               std::make_shared<RLWETrapdoorPair<Element>>(keyPair.second));
   } else {
-      //keyPair = RLWETrapdoorUtility<Element>::TrapdoorGenSquareMat(params, stddev, dimension, base);
-      std::pair<Matrix<Element>, RLWETrapdoorPair<Element>> keyPair = RLWETrapdoorUtility<Element>::TrapdoorGenSquareMat(params, stddev, dimension, base);
+      std::pair<Matrix<Element>, RLWETrapdoorPair<Element>> keyPair = RLWETrapdoorUtility<Element>::TrapdoorGenSquareMat(params, stddev, dimension, base, k);
       keyPair.second.m_e.SetFormat(Format::EVALUATION);
       keyPair.second.m_r.SetFormat(Format::EVALUATION);
       keyPair.first.SetFormat(Format::EVALUATION);
@@ -112,9 +120,14 @@ void GPVSignatureScheme<Element>::Sign(
 
   // Getting parameters for calculations
   size_t n = m_params->GetILParams()->GetRingDimension();
-  size_t k = m_params->GetK();
+  size_t k = 0;
   size_t base = m_params->GetBase();
   size_t dimension = m_params->GetDimension();
+  if (m_params->GetK0() == 1 && m_params->GetK1() == 1) {
+      k = m_params->GetK();
+  } else {
+      k = m_params->GetK1();
+  }
 
   EncodingParams ep(
       std::make_shared<EncodingParamsImpl>(PlaintextModulus(512)));
@@ -123,20 +136,21 @@ void GPVSignatureScheme<Element>::Sign(
   const Matrix<Element> &A = verificationKey.GetVerificationKey();
   const RLWETrapdoorPair<Element> &T = signKey.GetSignKey();
   typename Element::DggType &dgg = m_params->GetDiscreteGaussianGenerator();
-  typename Element::DggType &dggLargeSigma =
-      m_params->GetDiscreteGaussianGeneratorLargeSigma();
+
+  typename Element::DggType &dggLargeSigma = m_params->GetDiscreteGaussianGeneratorLargeSigma();
+  if (m_params->GetK0() != 1 && m_params->GetK1() != 1){
+      dggLargeSigma = m_params->GetDiscreteGaussianGeneratorLargeSigma1();
+  }
 
   if (dimension == 1) {
       Element u;
       Expand_1(sparams, pt, u);
-
       Matrix<Element> zHat = RLWETrapdoorUtility<Element>::GaussSamp(n, k, A, T, u, dgg, dggLargeSigma, base);
       signatureText->SetSignature(std::make_shared<Matrix<Element>>(zHat));
   } else {
       Matrix<Element> U(Element::Allocator(params, EVALUATION), dimension, 1);
       Expand_hash(sparams, pt, U);
-
-      Matrix<Element> zHat = RLWETrapdoorUtility<Element>::GaussSampSquareVec(n, k, A, T, U, dgg, dggLargeSigma, base);
+      Matrix<Element> zHat = RLWETrapdoorUtility<Element>::GaussSampSquareVec(n, k, A, T, U, dgg, dggLargeSigma, 0);
       signatureText->SetSignature(std::make_shared<Matrix<Element>>(zHat));
   }
 }
@@ -156,9 +170,16 @@ void GPVSignatureScheme<Element>::CrsGen(
 
         // Getting parameters for calculations
         size_t n = m_params->GetILParams()->GetRingDimension();
-        size_t k = m_params->GetK();
+        size_t k = 0;
+        size_t k1 = 0;
         size_t base = m_params->GetBase();
         size_t dimension = m_params->GetDimension();
+        if (m_params->GetK0() == 1 && m_params->GetK1() == 1) {
+            k = m_params->GetK();
+        } else {
+            k = m_params->GetK0();
+            k1 = m_params->GetK1();
+        }
 
         // Getting the trapdoor, its public matrix, perturbation matrix and gaussian
         // generator to use in sampling
@@ -179,8 +200,10 @@ void GPVSignatureScheme<Element>::CrsGen(
 
         const RLWETrapdoorPair<Element> &T = signKey.GetSignKey();
         typename Element::DggType &dgg = m_params->GetDiscreteGaussianGenerator();
-        typename Element::DggType &dggLargeSigma =
-                m_params->GetDiscreteGaussianGeneratorLargeSigma();
+        typename Element::DggType &dggLargeSigma = m_params->GetDiscreteGaussianGeneratorLargeSigma();
+        if (m_params->GetK0() != 1 && m_params->GetK1() != 1){
+            dggLargeSigma = m_params->GetDiscreteGaussianGeneratorLargeSigma0();
+        }
 
         if (dimension == 1) {
             Matrix<Element> zHat = RLWETrapdoorUtility<Element>::GaussSamp(n, k, A, T, BiAi(0, 0), dgg, dggLargeSigma, base);
@@ -191,13 +214,13 @@ void GPVSignatureScheme<Element>::CrsGen(
             signatureText->SetSignature(std::make_shared<Matrix<Element>>(zHat));
         } else {
             Matrix<Element> AiEx = BiAi.Transpose();
-            Matrix<Element> zHat =
-                    RLWETrapdoorUtility<Element>::GaussSampSquareMat(n, k, A, T, AiEx.ExtractRows(0, dimension-1).Transpose(), dgg, dggLargeSigma, base);
-            for (size_t col = 1; col < k + 2; col++){
-                Matrix<Element> zHat_col = RLWETrapdoorUtility<Element>::GaussSampSquareMat(n, k, A, T, AiEx.ExtractRows(dimension*col, dimension*(col+1)-1).Transpose(), dgg, dggLargeSigma, base);
-                zHat.HStack(zHat_col);
+            Matrix<Element> Ri = RLWETrapdoorUtility<Element>::GaussSampSquareMat(n, k, A, T, AiEx.ExtractRows(0, dimension-1).Transpose(), dgg, dggLargeSigma, 0);
+            for (size_t col = 1; col < k1 + 2; col++){
+                //std::cout << col << std::endl;
+                Matrix<Element> Ri_col = RLWETrapdoorUtility<Element>::GaussSampSquareMat(n, k, A, T, AiEx.ExtractRows(dimension*col, dimension*(col+1)-1).Transpose(), dgg, dggLargeSigma, 0);
+                Ri.HStack(Ri_col);
             }
-            signatureText->SetSignature(std::make_shared<Matrix<Element>>(zHat));
+            signatureText->SetSignature(std::make_shared<Matrix<Element>>(Ri));
         }
 
 }
@@ -317,6 +340,8 @@ bool GPVSignatureScheme<Element>::Verify(
       Expand_n(sparams, userSeed, Bi);
       // Check the verified vector is actually the encoding of the object
       signatureCheck = Bi.Mult(U).Equal(A.Mult(z));
+      std::cout << Bi.Mult(U).GetData() << std::endl;
+      std::cout << A.Mult(z).GetData() << std::endl;
   }
 
   if (VerifyNorm == true) {
@@ -333,12 +358,12 @@ bool GPVSignatureScheme<Element>::Verify(
     z.SetFormat(Format::COEFFICIENT);
     double z_inf_norm = z.Norm();
     double z_euc_norm = z.EuclideanNorm();
-    
+
     if (z_inf_norm > 5*inf_sign_bound || (z_euc_norm > euc_sign_bound))
     {
      //PALISADE_THROW(math_error, "Signature norm is larger than the expected bounds");
     }
-  
+
   }
   
   return signatureCheck;

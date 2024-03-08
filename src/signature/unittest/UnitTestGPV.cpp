@@ -198,7 +198,9 @@ TEST(UTSignatureGPV, key_homomorphic_signatures_from_GPV_trapdoors_square_matrix
     // Create setup key
     GPVVerificationKey<Poly> A;
     GPVSignKey<Poly> T;
-    context.KeyGen(&T, &A);
+    context.KeyGen(&T, &A, true);
+    std::cout << "A" << A.GetVerificationKey().GetRows() << std::endl;
+    std::cout << A.GetVerificationKey().GetCols() << std::endl;
 
     // User 1 : Create public key and private key
     GPVVerificationKey<Poly> A_1;
@@ -207,14 +209,20 @@ TEST(UTSignatureGPV, key_homomorphic_signatures_from_GPV_trapdoors_square_matrix
     string seed1_str = "seed1";
     seed1.SetPlaintext(seed1_str);
     context.KeyGen(&T_1, &A_1);
+    std::cout << "A_1" <<  A_1.GetVerificationKey().GetRows() << std::endl;
+    std::cout << A_1.GetVerificationKey().GetCols() << std::endl;
 
     // User 1 : presign
     GPVSignature<Poly> R_1;
     context.CrsGen(A_1, T, A, seed1, &R_1);
+    std::cout << "R_1" << R_1.GetSignature().GetRows() << std::endl;
+    std::cout << R_1.GetSignature().GetCols() << std::endl;
 
     // User 1 : sign
     GPVSignature<Poly> Sigma_1_Hat, Sigma_1;
     context.Sign(plaintext, T_1, A_1, &Sigma_1_Hat);
+    std::cout << "Sigma_1_Hat" <<  Sigma_1_Hat.GetSignature().GetRows() << std::endl;
+    std::cout << Sigma_1_Hat.GetSignature().GetCols() << std::endl;
 
     Matrix<Poly> Sigma_1_Matrix = R_1.GetSignature().Mult(Sigma_1_Hat.GetSignature());
     Sigma_1.SetSignature(std::make_shared<Matrix<Poly>>(Sigma_1_Matrix));
@@ -233,6 +241,7 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_multi_signature_square_matrix
     SignatureContext<Poly> context;
     usint ringsize = 512;
     const usint pnumber = 5;
+    bool setup = true;
     std::cout << "Used ring size for calculations: " << ringsize << std::endl;
     std::cout << "Generating context for GPV signature" << std::endl << std::endl;
     context.GenerateGPVContext(ringsize, true);//todo:add verifyparameter
@@ -250,7 +259,7 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_multi_signature_square_matrix
     // Create setup key
     GPVVerificationKey<Poly> A;
     GPVSignKey<Poly> T;
-    context.KeyGen(&T, &A);
+    context.KeyGen(&T, &A, setup);
 
     duration = TOC(t1);
     std::cout << "Setup Time: " << duration << " ms" << std::endl;
@@ -295,7 +304,12 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_multi_signature_square_matrix
     shared_ptr<typename Poly ::Params> params = m_params->GetILParams();
     auto uniform_alloc = Poly::MakeDiscreteUniformAllocator(params, EVALUATION);
     auto zero_alloc = Poly::Allocator(params, EVALUATION);
-    size_t k = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetK();
+    size_t k = 0;
+    if (setup) {
+        k = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetK0();
+    } else {
+        k = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetK();
+    }
 
     // aggregation
     Matrix<Poly> omega_all(zero_alloc, pnumber, 1, uniform_alloc);
@@ -335,6 +349,7 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_aggre_signature_square_matrix
     SignatureContext<Poly> context;
     usint ringsize = 512;
     const usint pnumber = 3;
+    bool setup = true;
     std::cout << "Used ring size for calculations: " << ringsize << std::endl;
     std::cout << "Generating context for GPV signature" << std::endl << std::endl;
     context.GenerateGPVContext(ringsize, true);//todo:add verifyparameter
@@ -353,7 +368,7 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_aggre_signature_square_matrix
     // Create setup key
     GPVVerificationKey<Poly> A;
     GPVSignKey<Poly> T;
-    context.KeyGen(&T, &A);
+    context.KeyGen(&T, &A, setup);
 
     duration = TOC(t1);
     std::cout << "Setup Time: " << duration << " ms" << std::endl;
@@ -398,7 +413,14 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_aggre_signature_square_matrix
     shared_ptr<typename Poly ::Params> params = m_params->GetILParams();
     auto uniform_alloc = Poly::MakeDiscreteUniformAllocator(params, EVALUATION);
     auto zero_alloc = Poly::Allocator(params, EVALUATION);
-    size_t k = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetK();
+    size_t k = 0;
+
+    if (setup) {
+        k = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetK0();
+    } else {
+        k = std::static_pointer_cast<GPVSignatureParameters<Poly>>(context.m_params)->GetK();
+    }
+
 
     // aggregation
     Matrix<Poly> omega_all(zero_alloc, pnumber, 1, uniform_alloc);
@@ -423,7 +445,7 @@ TEST(UTSignatureGPV, lattice_based_non_interactive_aggre_signature_square_matrix
         std::cout << "User" << i <<  " signature test: " << resulti << std::endl;
     }
 
-    std::cout << "multi-signature test: " << result << std::endl;
+    std::cout << "aggre-signature test: " << result << std::endl;
 
     duration = TOC(t_all);
     std::cout << "All Time: " << duration << " ms" << std::endl;

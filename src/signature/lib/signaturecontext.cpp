@@ -27,9 +27,14 @@ namespace lbcrypto {
 // Method for setting up a GPV context with specific parameters
 template <class Element>
 void SignatureContext<Element>::GenerateGPVContext(usint ringsize, usint bits,
-                                                   usint base, bool VerifyNorm, usint dimension) {
+                                                   usint base, bool VerifyNorm, usint dimension, usint k0, usint k1) {
   usint sm = ringsize * 2;
-  double stddev = SIGMA;
+  double stddev = 0;
+  if (k0 == 1 && k1 == 1){
+      stddev = SIGMA;
+  } else {
+      stddev = ETA;
+  }
   typename Element::DggType dgg(stddev);
   typename Element::Integer smodulus;
   typename Element::Integer srootOfUnity;
@@ -44,25 +49,33 @@ void SignatureContext<Element>::GenerateGPVContext(usint ringsize, usint bits,
   
   DiscreteFourierTransform::PreComputeTable(sm);
 
-  auto silparams =
-      std::make_shared<ILParamsImpl<typename Element::Integer>>(ilParams);
-  m_params =
-      std::make_shared<GPVSignatureParameters<Element>>(silparams, dgg, base, dimension, VerifyNorm);
+  auto silparams = std::make_shared<ILParamsImpl<typename Element::Integer>>(ilParams);
+  m_params = std::make_shared<GPVSignatureParameters<Element>>(silparams, dgg, base, dimension, VerifyNorm, k0, k1);
   m_scheme = std::make_shared<GPVSignatureScheme<Element>>();
 }
 // Method for setting up a GPV context with desired security level only
 template <class Element>
 void SignatureContext<Element>::GenerateGPVContext(usint ringsize, bool VerifyNorm) {
-  usint base, k, dimension;
+  usint base, k, k0, k1, dimension;
   switch (ringsize) {
 //    case 16:
 //      k = 2;
 //      base = 8;
-    case 512:
-      k = 24;
+    case 256:
+      k = 52;
+      k0 = 6;
+      k1 = 13;
       base = 8;
       dimension = 4;
-      GenerateGPVContext(ringsize, k, base, VerifyNorm, dimension);
+      GenerateGPVContext(ringsize, k, base, VerifyNorm, dimension, k0, k1);
+      break;
+    case 512:
+      k = 13;
+      k0 = 7;
+      k1 = 15;
+      base = 8;
+      dimension = 4;
+      GenerateGPVContext(ringsize, k, base, VerifyNorm, dimension, k0, k1);
       break;
     case 1024:
       k = 27;
@@ -76,9 +89,8 @@ void SignatureContext<Element>::GenerateGPVContext(usint ringsize, bool VerifyNo
 }
 // Method for key generation
 template <class Element>
-void SignatureContext<Element>::KeyGen(LPSignKey<Element>* sk,
-                                       LPVerificationKey<Element>* vk) {
-  m_scheme->KeyGen(m_params, sk, vk);
+void SignatureContext<Element>::KeyGen(LPSignKey<Element>* sk, LPVerificationKey<Element>* vk, bool setup) {
+  m_scheme->KeyGen(m_params, sk, vk, setup);
 }
 
 // Method for signing a given plaintext

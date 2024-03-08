@@ -153,7 +153,7 @@ class LPSignatureScheme {
    * @param vk Public key used for verification - Output
    */
   virtual void KeyGen(shared_ptr<LPSignatureParameters<Element>> m_params,
-                      LPSignKey<Element> *sk, LPVerificationKey<Element> *vk);
+                      LPSignKey<Element> *sk, LPVerificationKey<Element> *vk, bool setup = false);
   /**
    * @brief Method for signing
    * @param m_params Parameters used for the scheme

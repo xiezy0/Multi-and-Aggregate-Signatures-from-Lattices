@@ -184,6 +184,12 @@ class GPVSignatureParameters : public LPSignatureParameters<Element> {
 
   usint& GetDimension() { return m_dimension; }
 
+  usint& GetK0() { return m_k0; }
+  usint& GetB0() { return m_b0; }
+
+  usint& GetK1() { return m_k1; }
+  usint& GetB1() { return m_b1; }
+
 /**
    *Method for accessing the base for Gadget matrix
    *
@@ -206,28 +212,88 @@ class GPVSignatureParameters : public LPSignatureParameters<Element> {
     return m_dggLargeSigma;
   }
 
+  typename Element::DggType& GetDiscreteGaussianGeneratorLargeSigma0() {
+      return m_dggLargeSigma0;
+  }
+
+  typename Element::DggType& GetDiscreteGaussianGeneratorLargeSigma1() {
+      return m_dggLargeSigma1;
+  }
+
   /**
    *Constructor
    *@param params Parameters used in Element construction
    *@param dgg DiscreteGaussianGenerator used in sampling
    */
   GPVSignatureParameters(shared_ptr<typename Element::Params> params,
-                         typename Element::DggType& dgg, usint base = 2, usint dimension = 1, bool VerifyNormFlag = false)
-      : m_dgg(dgg), m_base(base), m_dimension(dimension) {
-    m_params = params;
-    const typename Element::Integer& q = params->GetModulus();
-    size_t n = params->GetRingDimension();
-    usint nBits = floor(log2(q.ConvertToDouble() - 1.0) + 1.0);
-    m_k = ceil(nBits / log2(base));
-    double c = (base + 1) * SIGMA;
-    double s = SPECTRAL_BOUND(n, m_k, base);
-    if (sqrt(s * s - c * c) <= KARNEY_THRESHOLD)
-      m_dggLargeSigma = typename Element::DggType(sqrt(s * s - c * c));
-    else
-      m_dggLargeSigma = m_dgg;
-
-    VerifyNorm = VerifyNormFlag;
+                         typename Element::DggType& dgg, usint base = 2, usint dimension = 1, bool VerifyNormFlag = false, usint k0 = 1, usint k1 = 1)
+      : m_dgg(dgg), m_base(base), m_dimension(dimension), m_k0(k0), m_k1(k1) {
+      const typename Element::Integer& q = params->GetModulus();
+      size_t n = params->GetRingDimension();
+      m_params = params;
+      if (k0 == 1 && k1 == 1) {
+          usint nBits = floor(log2(q.ConvertToDouble() - 1.0) + 1.0);
+          //std::cout << nBits << std::endl;
+          m_k = ceil(nBits / log2(base));
+          double c = (base + 1) * SIGMA;
+          double s = SPECTRAL_BOUND(n, m_k, base);
+          if (sqrt(s * s - c * c) <= KARNEY_THRESHOLD)
+              m_dggLargeSigma = typename Element::DggType(sqrt(s * s - c * c));
+          else
+              m_dggLargeSigma = m_dgg;
+      } else {
+          // b0 = k0 √q
+          m_b0 = std::ceil(std::pow(q.ConvertToDouble(), 1.0/k0));
+          m_b1 = std::ceil(std::pow(q.ConvertToDouble(), 1.0/k1));
+//          std::cout << m_b0 << std::endl;
+//          std::cout << m_b1 << std::endl;
+          double S_0 = (1 + std::sqrt(m_k0/2)) * std::sqrt(dimension * n);
+          double S_1 = (1 + std::sqrt(m_k1/2)) * std::sqrt(dimension * n);
+          double sigmat0 = (S_0 + 1) * std::sqrt(std::pow(m_b0, 2) + 1) * ETA;
+          double sigmat1 = (S_1 + 1) * std::sqrt(std::pow(m_b1, 2) + 1) * ETA;
+          double s0 = SPECTRAL_BOUND_D_MP(n, m_k0, sigmat0, dimension);
+          double s1 = SPECTRAL_BOUND_D_MP(n, m_k1, sigmat1, dimension);
+          if (sqrt(s0 * s0 - sigmat0 * sigmat0) <= KARNEY_THRESHOLD)
+              m_dggLargeSigma0 = typename Element::DggType(sqrt(s0 * s0 - sigmat0 * sigmat0));
+          else
+              m_dggLargeSigma0 = m_dgg;
+          if (sqrt(s1 * s1 - sigmat1 * sigmat1) <= KARNEY_THRESHOLD)
+              m_dggLargeSigma1 = typename Element::DggType(sqrt(s1 * s1 - sigmat1 * sigmat1));
+          else
+              m_dggLargeSigma1 = m_dgg;
+      }
+      VerifyNorm = VerifyNormFlag;
   }
+
+
+//  GPVSignatureParameters(shared_ptr<typename Element::Params> params,
+//                         typename Element::DggType& dgg, usint base = 2, usint dimension = 1, bool VerifyNormFlag = false, usint k0 = 1, usint k1 = 1)
+//            : m_dgg(dgg), m_base(base), m_dimension(dimension), m_k0(k0), m_k1(k1) {
+//        m_params = params;
+//        const typename Element::Integer& q = params->GetModulus();
+//        size_t n = params->GetRingDimension();
+//
+//        // b0 = k0 √q
+//        m_b0 = std::ceil(std::pow(q.ConvertToDouble(), 1.0/k0));
+//        m_b1 = std::ceil(std::pow(q.ConvertToDouble(), 1.0/k1));
+//
+//        double c0 = (m_b0 + 1) * MPSIGMA;
+//        double c1 = (m_b1 + 1) * MPSIGMA;
+//        double s0 = SPECTRAL_BOUND_D(n, m_k0, m_b0, dimension);
+//        double s1 = SPECTRAL_BOUND_D(n, m_k1, m_b1, dimension);
+//        if (sqrt(s0 * s0 - c0 * c0) <= KARNEY_THRESHOLD)
+//            m_dggLargeSigma0 = typename Element::DggType(sqrt(s0 * s0 - c0 * c0));
+//        else
+//            m_dggLargeSigma0 = m_dgg;
+//
+//      if (sqrt(s1 * s1 - c1 * c1) <= KARNEY_THRESHOLD)
+//          m_dggLargeSigma1 = typename Element::DggType(sqrt(s1 * s1 - c1 * c1));
+//      else
+//          m_dggLargeSigma1 = m_dgg;
+//        VerifyNorm = VerifyNormFlag;
+//
+//        //m_b0 =
+//    }
 
  private:
   // Parameters related to elements
@@ -236,14 +302,19 @@ class GPVSignatureParameters : public LPSignatureParameters<Element> {
   typename Element::DggType m_dgg;
   // Discrete Gaussian Generator with high distribution parameter for random
   // number generation
-  typename Element::DggType m_dggLargeSigma;
+  typename Element::DggType m_dggLargeSigma, m_dggLargeSigma0, m_dggLargeSigma1;
   // Trapdoor base
   usint m_base;
   // Trapdoor length
-  usint m_k;
+  usint m_k{};
   // Trapdoor dimension
   usint m_dimension;
-
+  // gadget parameters for the trusted setup
+  usint m_k0{};
+  usint m_b0{};
+  // gadget parameters for users
+  usint m_k1{};
+  usint m_b1{};
   //flag for verifying norm of signature
   bool VerifyNorm;
 
@@ -450,7 +521,7 @@ class GPVSignatureScheme : public LPSignatureScheme<Element> {
    *function
    */
   void KeyGen(shared_ptr<LPSignatureParameters<Element>> m_params,
-              LPSignKey<Element>* sk, LPVerificationKey<Element>* vk);
+              LPSignKey<Element>* sk, LPVerificationKey<Element>* vk, bool setup = false);
 
  private:
   std::vector<char> seed;
